@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:english_words/english_words.dart';
 
@@ -6,12 +8,56 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp();
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: WordsScreen(),
+      theme: ThemeData(
+        primaryColor: const Color(0xFF92D954), // Color primario consistente
+        scaffoldBackgroundColor: const Color(0xFFC0E3CA), // Color de fondo que combina con el encabezado
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF92D954), // Color del encabezado
+        ),
+      ),
+      home: SplashScreen(), // Iniciar con el SplashScreen
+    );
+  }
+}
+
+class SplashScreen extends StatefulWidget {
+  const SplashScreen();
+
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Simular un proceso de carga con un retraso de 1 segundos
+    Timer(Duration(seconds: 1), () {
+      // Navegar a la pantalla principal después del tiempo de espera
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => WordsScreen()),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(), // Indicador de progreso
+            SizedBox(height: 30),
+            Text('Loading...'), // Texto de carga
+          ],
+        ),
+      ),
     );
   }
 }
@@ -22,38 +68,53 @@ class WordsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Welcome to Flutter'),
-        backgroundColor: Color(0xFF92D954),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => RandomWordsScreen(showNouns: false),
-                  ),
-                );
-              },
-              child: const Text('Words'),
+            CustomButton(
+              text: 'Words',
+              onPressed: () => _navigateToRandomWordsScreen(context, false),
             ),
             const SizedBox(height: 35),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => RandomWordsScreen(showNouns: true),
-                  ),
-                );
-              },
-              child: const Text('Nouns'),
+            CustomButton(
+              text: 'Nouns',
+              onPressed: () => _navigateToRandomWordsScreen(context, true),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _navigateToRandomWordsScreen(BuildContext context, bool showNouns) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: Duration(milliseconds: 300), // Duración de la animación
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return FadeTransition(
+            opacity: animation,
+            child: RandomWordsScreen(showNouns: showNouns),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class CustomButton extends StatelessWidget {
+  final String text;
+  final VoidCallback onPressed;
+
+  const CustomButton({required this.text, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      child: Text(text),
     );
   }
 }
@@ -72,11 +133,20 @@ class RandomWordsScreenState extends State<RandomWordsScreen> {
   final _biggerFont = const TextStyle(fontSize: 20.0);
 
   @override
+  void initState() {
+    super.initState();
+    _generateWordPairs();
+  }
+
+  void _generateWordPairs() {
+    _suggestions.addAll(generateWordPairs().take(15));
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.showNouns ? 'Nouns' : 'Words'),
-        backgroundColor: Color(0xFF92D954),
       ),
       body: _buildSuggestions(),
     );
@@ -94,12 +164,10 @@ class RandomWordsScreenState extends State<RandomWordsScreen> {
   Widget _buildSuggestions() {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
+      itemCount: _suggestions.length * 2, // Doble para incluir separadores
       itemBuilder: (context, i) {
         if (i.isOdd) return const Divider();
         final index = i ~/ 2;
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(15));
-        }
         return _buildRow(_suggestions[index]);
       },
     );
