@@ -8,7 +8,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -125,21 +125,50 @@ class RandomWordsScreen extends StatefulWidget {
   const RandomWordsScreen({Key? key, required this.showNouns}) : super(key: key);
 
   @override
-  RandomWordsScreenState createState() => RandomWordsScreenState();
+  _RandomWordsScreenState createState() => _RandomWordsScreenState();
 }
 
-class RandomWordsScreenState extends State<RandomWordsScreen> {
+class _RandomWordsScreenState extends State<RandomWordsScreen> {
   late final _suggestions = <WordPair>[];
   final _biggerFont = const TextStyle(fontSize: 20.0);
+  final _scrollController = ScrollController();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _generateWordPairs();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _generateWordPairs() {
     _suggestions.addAll(generateWordPairs().take(15));
+  }
+
+  void _loadMoreSuggestions() {
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simular una carga de datos con un retraso de 1 segundo
+    Timer(Duration(seconds: 1), () {
+      setState(() {
+        _suggestions.addAll(generateWordPairs().take(15));
+        _isLoading = false;
+      });
+    });
+  }
+
+  void _onScroll() {
+    if (!_isLoading && _scrollController.position.extentAfter < 500) {
+      _loadMoreSuggestions();
+    }
   }
 
   @override
@@ -148,7 +177,19 @@ class RandomWordsScreenState extends State<RandomWordsScreen> {
       appBar: AppBar(
         title: Text(widget.showNouns ? 'Nouns' : 'Words'),
       ),
-      body: _buildSuggestions(),
+      body: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16.0),
+        itemCount: _suggestions.length * 2, // Doble para incluir separadores
+        itemBuilder: (context, i) {
+          if (i.isOdd) return const Divider();
+          final index = i ~/ 2;
+          if (index >= _suggestions.length) {
+            return _buildLoadingIndicator();
+          }
+          return _buildRow(_suggestions[index]);
+        },
+      ),
     );
   }
 
@@ -161,15 +202,12 @@ class RandomWordsScreenState extends State<RandomWordsScreen> {
     );
   }
 
-  Widget _buildSuggestions() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: _suggestions.length * 2, // Doble para incluir separadores
-      itemBuilder: (context, i) {
-        if (i.isOdd) return const Divider();
-        final index = i ~/ 2;
-        return _buildRow(_suggestions[index]);
-      },
+  Widget _buildLoadingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 }
